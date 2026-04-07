@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform, animate } from 'framer-motion'
 import exchange3d from './assets/modal/exchange-3d.png'
+import { Wallet4Line, CoinLine, ReceiveMoneyLine } from '@mingcute/react'
 
 /* ─────────────────────────────────────────────────────────────
  * TRANSACTION SUMMARY — ANIMATION STORYBOARD
@@ -47,32 +48,8 @@ const inter = {
   WebkitFontSmoothing: 'antialiased',
 } as const
 
-/* ── Inline SVG icons ──────────────────────────────────────── */
-function IconWallet() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 14.8333 14.3475" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M10.75 8.59747C10.75 8.82759 10.5635 9.01413 10.3333 9.01413C10.1032 9.01413 9.91667 8.82759 9.91667 8.59747C9.91667 8.36735 10.1032 8.1808 10.3333 8.1808C10.5635 8.1808 10.75 8.36735 10.75 8.59747Z" fill="#A4A4A4"/>
-      <path d="M12.4167 3.59747V2.25136C12.4167 1.25521 11.4635 0.535774 10.5055 0.808806L1.83887 3.27881C1.19444 3.46247 0.75 4.05128 0.75 4.72136V6.09747M10.75 8.59747C10.75 8.82759 10.5635 9.01413 10.3333 9.01413C10.1032 9.01413 9.91667 8.82759 9.91667 8.59747C9.91667 8.36735 10.1032 8.1808 10.3333 8.1808C10.5635 8.1808 10.75 8.36735 10.75 8.59747ZM1.75 13.5975H13.0833C13.6356 13.5975 14.0833 13.1498 14.0833 12.5975V4.59747C14.0833 4.04518 13.6356 3.59747 13.0833 3.59747H1.75C1.19772 3.59747 0.75 4.04518 0.75 4.59747V12.5975C0.75 13.1498 1.19771 13.5975 1.75 13.5975Z" stroke="#A4A4A4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
-
-function IconCoin() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 16.5 11.5" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M15.75 4.08333C15.75 5.92428 12.3921 7.41667 8.25 7.41667C4.10786 7.41667 0.75 5.92428 0.75 4.08333M15.75 4.08333C15.75 2.24238 12.3921 0.75 8.25 0.75C4.10786 0.75 0.75 2.24238 0.75 4.08333M15.75 4.08333V7.41667C15.75 9.25762 12.3921 10.75 8.25 10.75C4.10786 10.75 0.75 9.25762 0.75 7.41667V4.08333" stroke="#A4A4A4" strokeWidth="1.5"/>
-    </svg>
-  )
-}
-
-function IconHandCoin() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 14.8333 14.3475" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M10.75 8.59747C10.75 8.82759 10.5635 9.01413 10.3333 9.01413C10.1032 9.01413 9.91667 8.82759 9.91667 8.59747C9.91667 8.36735 10.1032 8.1808 10.3333 8.1808C10.5635 8.1808 10.75 8.36735 10.75 8.59747Z" fill="#A4A4A4"/>
-      <path d="M12.4167 3.59747V2.25136C12.4167 1.25521 11.4635 0.535774 10.5055 0.808806L1.83887 3.27881C1.19444 3.46247 0.75 4.05128 0.75 4.72136V6.09747M10.75 8.59747C10.75 8.82759 10.5635 9.01413 10.3333 9.01413C10.1032 9.01413 9.91667 8.82759 9.91667 8.59747C9.91667 8.36735 10.1032 8.1808 10.3333 8.1808C10.5635 8.1808 10.75 8.36735 10.75 8.59747ZM1.75 13.5975H13.0833C13.6356 13.5975 14.0833 13.1498 14.0833 12.5975V4.59747C14.0833 4.04518 13.6356 3.59747 13.0833 3.59747H1.75C1.19772 3.59747 0.75 4.04518 0.75 4.59747V12.5975C0.75 13.1498 1.19771 13.5975 1.75 13.5975Z" stroke="#A4A4A4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
+/* ── Row icons — MingCute 20px, soft color ─────────────────── */
+const ICON_PROPS = { size: 20, color: T.soft }
 
 function IconClose() {
   return (
@@ -120,27 +97,69 @@ function DetailRow({
   )
 }
 
-/* ── Slide-to-swap button ──────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────
+ * SLIDE TO SWAP — STORYBOARD
+ *
+ *  IDLE
+ *    track:  #f7f7f7 pill, overflow hidden
+ *    fill:   scaleX(HANDLE_W / innerW) — tiny sliver at left,
+ *            fully hidden behind handle  (GPU only, transform)
+ *            wave-flow shimmer loops continuously
+ *    handle: dark pill at left, will-change: transform
+ *    label:  "Slide To Swap" centered, gray
+ *
+ *  DRAGGING
+ *    fill.scaleX: HANDLE_W/innerW → 1  (transform-origin: left)
+ *    label: opacity 1→0 over first 100px drag
+ *    handle: cursor grab, scale(0.97) on tap
+ *
+ *  RELEASE — fast swipe (velocity > 300px/s) OR past 78%
+ *    dragX → trackW   spring stiffness:500 damping:40
+ *    → done = true, checkmark springs in (scale 0→1, bounce:0.3)
+ *
+ *  RELEASE — slow / early
+ *    dragX → 0   spring stiffness:380 damping:28 bounce:0.15
+ *                slight overshoot on spring-back feels alive
+ *
+ *  COMPLETE
+ *    label gone, handle locked at right end with checkmark
+ * ───────────────────────────────────────────────────────────── */
 function SlideToSwap({ onConfirm }: { onConfirm: () => void }) {
-  const reduced   = useReducedMotion()
-  const [done, setDone]   = useState(false)
-  const trackRef  = useRef<HTMLDivElement>(null)
-  const dragX     = useMotionValue(0)
-  const HANDLE    = 48  // handle diameter
+  const reduced  = useReducedMotion()
+  const [done, setDone] = useState(false)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const dragX    = useMotionValue(0)
 
-  // Fade out label as handle approaches right
-  const labelOpacity = useTransform(dragX, [0, 120], [1, 0])
+  // ── Figma: pill handle — h-[40px] px-[16px] py-[8px] rounded-[24px]
+  const HANDLE_H = 40   // pill height
+  const HANDLE_W = 52   // icon 20px + padding 16px × 2
+  const PAD      = 8    // track padding (matches Figma p-[8px])
+
+  // ── Fill width: starts at HANDLE_W (hidden under handle at rest),
+  // grows as user drags. Width = dragX + HANDLE_W so fill always stays
+  // flush beneath handle's right edge — no gap, no detachment.
+  // Using width (not scaleX) so borderRadius stays visually correct.
+  const fillWidth = useTransform(dragX, v => {
+    const innerW = (trackRef.current?.offsetWidth ?? 376) - PAD * 2
+    return Math.min(innerW, v + HANDLE_W)
+  })
+
+  // Label fades out over first 80px of drag
+  const labelOpacity = useTransform(dragX, [0, 80], [1, 0])
+
+  function complete(maxTravel: number) {
+    animate(dragX, maxTravel, { type: 'spring', stiffness: 500, damping: 40 })
+    setDone(true)
+    setTimeout(onConfirm, 600)
+  }
 
   function handleDragEnd() {
-    const trackW = (trackRef.current?.offsetWidth ?? 320) - HANDLE - 8
-    if (dragX.get() >= trackW * 0.78) {
-      // Snap to end
-      animate(dragX, trackW, { type: 'spring', stiffness: 500, damping: 40 })
-      setDone(true)
-      setTimeout(onConfirm, 500)
+    const maxTravel = (trackRef.current?.offsetWidth ?? 376) - HANDLE_W - PAD * 2
+    const velocity  = dragX.getVelocity()
+    if (dragX.get() >= maxTravel * 0.78 || velocity > 300) {
+      complete(maxTravel)
     } else {
-      // Spring back
-      animate(dragX, 0, { type: 'spring', stiffness: 400, damping: 30 })
+      animate(dragX, 0, { type: 'spring', stiffness: 380, damping: 28, bounce: 0.15 })
     }
   }
 
@@ -154,9 +173,9 @@ function SlideToSwap({ onConfirm }: { onConfirm: () => void }) {
         ref={trackRef}
         style={{
           position: 'relative',
-          height: HANDLE + 8,
+          height: HANDLE_H + PAD * 2,   // 56px
           borderRadius: 999,
-          padding: 4,
+          padding: PAD,
           background: 'linear-gradient(180deg, rgba(255,255,255,0.153) 6.67%, rgba(255,255,255,0) 103.33%), linear-gradient(90deg, #f7f7f7 0%, #f7f7f7 100%)',
           boxShadow: '0px 0px 0px 0.3px #ebebeb, 0px 1px 3px -1.5px rgba(51,51,51,0.16)',
           display: 'flex', alignItems: 'center',
@@ -164,20 +183,34 @@ function SlideToSwap({ onConfirm }: { onConfirm: () => void }) {
           overflow: 'hidden',
         }}
       >
-        {/* "Slide To Swap" label — centered, fades as handle moves */}
+        {/* ── Dark fill — hidden under handle at rest, grows with drag ── */}
+        {!reduced && (
+          <motion.div
+            className="slide-water-fill"
+            style={{
+              position: 'absolute',
+              left: PAD, top: PAD, bottom: PAD,
+              width: fillWidth,       // grows: HANDLE_W → innerW
+              borderRadius: 24,       // matches handle pill shape exactly
+              zIndex: 1,
+            }}
+          />
+        )}
+
+        {/* ── "Slide To Swap" label ────────────────────────── */}
         <motion.p
           style={{
             ...inter, fontWeight: 500, fontSize: 14,
             lineHeight: '20px', letterSpacing: '-0.084px', color: T.sub,
             position: 'absolute', left: 0, right: 0, textAlign: 'center',
-            pointerEvents: 'none',
+            pointerEvents: 'none', zIndex: 3,
             opacity: labelOpacity,
           }}
         >
-          {done ? 'Swapped!' : 'Slide To Swap'}
+          Slide To Swap
         </motion.p>
 
-        {/* Draggable handle */}
+        {/* ── Draggable pill handle — matches Figma exactly ── */}
         <motion.div
           drag={done ? false : 'x'}
           dragConstraints={trackRef}
@@ -186,14 +219,16 @@ function SlideToSwap({ onConfirm }: { onConfirm: () => void }) {
           onDragEnd={handleDragEnd}
           style={{
             x: dragX,
-            width: HANDLE, height: HANDLE,
-            borderRadius: 999, flexShrink: 0, zIndex: 2,
+            width: HANDLE_W, height: HANDLE_H,
+            borderRadius: 24,          // Figma: rounded-[24px]
+            flexShrink: 0, zIndex: 4,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: done ? 'default' : 'grab',
             position: 'relative',
+            willChange: 'transform',
             backgroundImage: [
               'linear-gradient(180deg, rgba(255,255,255,0.153) 6.67%, rgba(255,255,255,0) 103.33%)',
-              `linear-gradient(90deg, #171717 0%, #171717 100%)`,
+              'linear-gradient(90deg, #171717 0%, #171717 100%)',
             ].join(', '),
             boxShadow: [
               '0px 0px 0px 0.75px #171717',
@@ -204,7 +239,7 @@ function SlideToSwap({ onConfirm }: { onConfirm: () => void }) {
             ].join(', '),
             WebkitTapHighlightColor: 'transparent',
           }}
-          whileTap={{ scale: 0.94 }}
+          whileTap={{ scale: 0.97 }}
           transition={SPRING_PRESS}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -212,21 +247,21 @@ function SlideToSwap({ onConfirm }: { onConfirm: () => void }) {
               <motion.svg
                 key="check"
                 width="16" height="16" viewBox="0 0 24 24" fill="none"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                initial={{ opacity: 0, scale: 0.4, rotate: -15 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', visualDuration: 0.4, bounce: 0.3 }}
               >
                 <path d="M5 12L10 17L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </motion.svg>
             ) : (
-              <motion.span key="arrows" initial={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.span key="arrows" initial={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.08 } }}>
                 <IconArrowsRight />
               </motion.span>
             )}
           </AnimatePresence>
           {/* Inset highlight */}
           <div style={{
-            position: 'absolute', inset: 0, borderRadius: 999, pointerEvents: 'none',
+            position: 'absolute', inset: 0, borderRadius: 24, pointerEvents: 'none',
             boxShadow: 'inset 0px 1px 2px 0px rgba(255,255,255,0.16)',
           }}/>
         </motion.div>
@@ -253,10 +288,10 @@ export default function TransactionSummary({
   const rate    = (receiveAmt / sellAmt).toFixed(2)
 
   const rows = [
-    { icon: <IconWallet />,   label: 'Amount',    value: `${sell.symbol}${sellAmt.toLocaleString('en-US')}`,    delay: 0.32 },
-    { icon: <IconCoin />,     label: 'Price',     value: `${sell.symbol}1 - ${receive.symbol}${rate}`,          delay: 0.37 },
-    { icon: <IconCoin />,     label: 'Exchanged', value: `${receive.symbol}${receiveAmt.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, delay: 0.42 },
-    { icon: <IconHandCoin />, label: 'Fees',      value: `${sell.symbol}0`,                                     delay: 0.47 },
+    { icon: <Wallet4Line {...ICON_PROPS} />,      label: 'Amount',    value: `${sell.symbol}${sellAmt.toLocaleString('en-US')}`,    delay: 0.32 },
+    { icon: <CoinLine {...ICON_PROPS} />,         label: 'Price',     value: `${sell.symbol}1 - ${receive.symbol}${rate}`,          delay: 0.37 },
+    { icon: <CoinLine {...ICON_PROPS} />,         label: 'Exchanged', value: `${receive.symbol}${receiveAmt.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, delay: 0.42 },
+    { icon: <ReceiveMoneyLine {...ICON_PROPS} />, label: 'Fees',      value: `${sell.symbol}0`,                                     delay: 0.47 },
   ]
 
   return (
@@ -268,8 +303,8 @@ export default function TransactionSummary({
         transition={reduced ? { duration: 0.12 } : { ...SPRING_ENTRY, delay: 0 }}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 20px', height: 60,
-          borderBottom: `1px solid ${T.stroke}`,
+          padding: '0 16px', height: 56,
+          borderBottom: `var(--border-hairline) solid ${T.stroke}`,
           flexShrink: 0,
         }}
       >
@@ -282,9 +317,9 @@ export default function TransactionSummary({
           aria-label="Close"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 28, height: 28,
+            width: 20, height: 20,
             background: 'none', border: 'none', cursor: 'pointer',
-            padding: 4, borderRadius: 6, outline: 'none',
+            padding: 0, borderRadius: 4, outline: 'none',
             WebkitTapHighlightColor: 'transparent',
           }}
         >
@@ -293,7 +328,7 @@ export default function TransactionSummary({
       </motion.div>
 
       {/* ── Body ──────────────────────────────────────────── */}
-      <div style={{ padding: '24px 16px 0', display: 'flex', flexDirection: 'column', gap: 0, flex: 1 }}>
+      <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 0, flex: 1 }}>
 
         {/* 3D icon + labels */}
         <motion.div
@@ -305,9 +340,9 @@ export default function TransactionSummary({
           <img
             src={exchange3d}
             alt="Exchange"
-            style={{ width: 90, height: 90, objectFit: 'contain', marginBottom: -8 }}
+            style={{ width: 106, height: 106, objectFit: 'contain', marginBottom: -8 }}
           />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginBottom: -8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: -8 }}>
             <motion.p
               initial={{ opacity: 0, y: reduced ? 0 : 4 }}
               animate={{ opacity: 1, y: 0 }}
@@ -338,7 +373,7 @@ export default function TransactionSummary({
             lineHeight: '40px', letterSpacing: '-0.16px',
             fontFeatureSettings: "'ss11', 'calt' 0, 'liga' 0",
             color: T.strong,
-            textAlign: 'center', margin: '16px 0 24px',
+            textAlign: 'center', margin: '20px 0 20px',
             fontVariantNumeric: 'tabular-nums',
           }}
         >
@@ -351,7 +386,7 @@ export default function TransactionSummary({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2, delay: 0.3 }}
-          style={{ height: 1, background: T.stroke, marginBottom: 16, flexShrink: 0 }}
+          style={{ height: 'var(--border-hairline)', background: T.stroke, marginBottom: 16, flexShrink: 0 }}
         />
 
         {/* Detail rows */}
@@ -366,12 +401,12 @@ export default function TransactionSummary({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2, delay: 0.5 }}
-          style={{ height: 1, background: T.stroke, margin: '16px 0', flexShrink: 0 }}
+          style={{ height: 'var(--border-hairline)', background: T.stroke, margin: '16px 0', flexShrink: 0 }}
         />
       </div>
 
       {/* ── Footer — Slide To Swap ─────────────────────────── */}
-      <div style={{ padding: '0 16px 20px', flexShrink: 0 }}>
+      <div style={{ padding: '0 16px 16px', flexShrink: 0 }}>
         <SlideToSwap onConfirm={onConfirm} />
       </div>
     </>

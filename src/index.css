@@ -6,6 +6,17 @@
   padding: 0;
 }
 
+/* Hairline borders: 0.5px on retina, 1px on standard displays */
+:root {
+  --border-hairline: 1px;
+}
+@media only screen and (min-device-pixel-ratio: 2),
+       only screen and (min-resolution: 192dpi) {
+  :root {
+    --border-hairline: 0.5px;
+  }
+}
+
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -33,6 +44,32 @@ input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* ── Slide-to-swap water fill ──────────────────────────────── */
+@keyframes wave-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.slide-water-fill {
+  background: linear-gradient(
+    105deg,
+    #171717 0%,
+    #2a2a2a 25%,
+    #383838 50%,
+    #2a2a2a 75%,
+    #171717 100%
+  );
+  background-size: 300% 100%;
+  animation: wave-flow 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-water-fill {
+    animation: none;
+  }
 }
 
 /* Amount input — no highlight ring, inherits font */

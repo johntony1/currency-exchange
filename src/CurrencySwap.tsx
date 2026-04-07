@@ -301,7 +301,7 @@ function ReceiveCard({
       padding: 12, display: 'flex', flexDirection: 'column', gap: 6,
     }}>
       <p style={{ ...inter, fontWeight: 400, fontSize: 12, lineHeight: '16px', color: T.textSoft, margin: 0 }}>
-        Recieve at least
+        Receive at least
       </p>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <AnimatePresence mode="wait" initial={false}>
@@ -503,8 +503,8 @@ export default function CurrencySwap() {
           >
             {/* ── Header ──────────────────────────────────── */}
             <div style={{
-              height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '0 20px', borderBottom: `1px solid ${T.strokeSoft}`, opacity: 0.6,
+              height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0 16px', borderBottom: `var(--border-hairline) solid ${T.strokeSoft}`, opacity: 0.6,
             }}>
               <span style={{ ...inter, fontWeight: 500, fontSize: 16, lineHeight: '24px', letterSpacing: '-0.176px', color: T.textSub }}>
                 Currency exchange
@@ -614,7 +614,7 @@ export default function CurrencySwap() {
             </div>
 
             {/* ── CTA ─────────────────────────────────────── */}
-            <div style={{ borderTop: `1px solid ${T.strokeSoft}`, padding: 16, background: T.bgWhite, borderRadius: '0 0 20px 20px' }}>
+            <div style={{ borderTop: `var(--border-hairline) solid ${T.strokeSoft}`, padding: 16, background: T.bgWhite, borderRadius: '0 0 20px 20px' }}>
               <motion.button
                 onClick={handleProceed}
                 whileTap={{ scale: 0.97 }} transition={PRESS}
