@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion, useAnimation } from 'framer-motion'
 import { Flag } from './flags'
-import CurrencyDropdown, { type Currency, SPRING_CLOSE } from './CurrencyDropdown'
+import CurrencyDropdown, { type Currency } from './CurrencyDropdown'
+import TransactionSummary from './TransactionSummary'
 
 /* ─────────────────────────────────────────────────────────────
  * SWAP CARD ANIMATION STORYBOARD
@@ -79,9 +80,10 @@ const T = {
 } as const
 
 /* ── Animation presets ─────────────────────────────────────── */
-const SWAP_SPRING = { type: 'spring', stiffness: 480, damping: 36, mass: 0.8 } as const
-const PRESS       = { type: 'spring', stiffness: 700, damping: 42 } as const
-const FADE        = { duration: 0.12, ease: 'easeOut' } as const
+const SWAP_SPRING   = { type: 'spring', stiffness: 480, damping: 36, mass: 0.8 } as const
+const PRESS         = { type: 'spring', stiffness: 700, damping: 42 } as const
+const FADE          = { duration: 0.12, ease: 'easeOut' } as const
+const SPRING_LAYOUT = { type: 'spring', stiffness: 240, damping: 22 } as const
 
 /* ── Shared typography base ────────────────────────────────── */
 const inter = {
@@ -359,6 +361,7 @@ export default function CurrencySwap() {
   const [swapping,    setSwapping]   = useState(false)
   const [iconAngle,   setIconAngle]  = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [view,       setView]       = useState<'swap' | 'summary'>('swap')
 
   const sellAmt    = parseFloat(inputStr) || 0
   const receiveAmt = +(sellAmt * RATES[sell.code][receive.code]).toFixed(3)
@@ -443,10 +446,24 @@ export default function CurrencySwap() {
   }
 
   async function handleProceed() {
-    if (submitting) return
+    if (submitting || !sellAmt) return
     setSubmitting(true)
-    await new Promise(r => setTimeout(r, 1400))
+    setOpenDropdown(null)
+    await new Promise(r => setTimeout(r, 500))
     setSubmitting(false)
+    setView('summary')
+  }
+
+  function handleBack() {
+    setView('swap')
+  }
+
+  function handleConfirm() {
+    // Slide-to-swap completed — reset and go back
+    setTimeout(() => {
+      setView('swap')
+      setInputStr('0')
+    }, 800)
   }
 
   /* Currencies available for the other slot (prevent same-same) */
@@ -456,9 +473,13 @@ export default function CurrencySwap() {
   return (
     <motion.div
       ref={cardRef}
+      layout
       initial={reduced ? false : { opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
+      transition={{
+        layout: SPRING_LAYOUT,
+        default: { duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] },
+      }}
       style={{
         position: 'relative',        /* anchor for dropdown */
         width: 400,
@@ -469,206 +490,233 @@ export default function CurrencySwap() {
         flexDirection: 'column',
       }}
     >
-      {/* ── Header ──────────────────────────────────────────── */}
-      <div style={{
-        height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 20px', borderBottom: `1px solid ${T.strokeSoft}`, opacity: 0.6,
-      }}>
-        <span style={{ ...inter, fontWeight: 500, fontSize: 16, lineHeight: '24px', letterSpacing: '-0.176px', color: T.textSub }}>
-          Currency exchange
-        </span>
-        <motion.button
-          whileTap={{ scale: 0.85 }} transition={PRESS} aria-label="Close"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'none', border: 'none', cursor: 'pointer',
-            padding: 4, borderRadius: 6, outline: 'none',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <IconClose />
-        </motion.button>
-      </div>
-
-      {/* ── Swap card ───────────────────────────────────────── */}
-      {/* perspective on wrapper so rotateX reads as 3-D depth   */}
-      <div style={{ padding: 16, perspective: 900, perspectiveOrigin: '50% 50%' }}>
-        <motion.div
-          animate={flipControls}
-          style={{
-            position: 'relative',
-            borderRadius: 32,
-            background: T.bgWhite,
-            boxShadow: [
-              '0px 4px 8px -2px rgba(51,51,51,0.06)',
-              '0px 2px 4px 0px rgba(51,51,51,0.04)',
-              '0px 1px 2px 0px rgba(51,51,51,0.04)',
-              '0px 0px 0px 1px #f5f5f5',
-              'inset 0px -1px 1px -0.5px rgba(51,51,51,0.06)',
-            ].join(', '),
-            padding: 8,
-            display: 'flex', flexDirection: 'column',
-            transformOrigin: '50% 50%',
-            backfaceVisibility: 'hidden',
-            willChange: 'transform',
-          }}
-        >
-          {/* You sell */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div
-              key={`sell-${sell.code}`}
-              layout={!reduced}
-              initial={reduced ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={reduced ? undefined : { opacity: 0 }}
-              transition={FADE}
-            >
-              <SellCard
-                currency={sell}
-                inputStr={inputStr}
-                onInputChange={handleInputChange}
-                isCounting={isCounting}
-                isDropdownOpen={openDropdown === 'sell'}
-                onSelectorClick={() => openFor('sell')}
-                selectorRef={sellBtnRef}
-                onMax={handleMax}
-              />
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Swap button — outer div owns centering so Framer Motion's
-              rotate doesn't conflict with translateX(-50%)            */}
-          <div style={{
-            position: 'absolute', top: 85, left: '50%',
-            transform: 'translateX(-50%)', zIndex: 10,
-          }}>
-            <motion.button
-              onClick={handleSwap}
-              whileTap={{ scale: 0.86 }}
-              animate={reduced ? {} : { rotate: iconAngle }}
-              transition={SWAP_SPRING}
-              aria-label="Swap currencies"
-              style={{
-                width: 36, height: 36,
-                background: T.bgWeak, border: '2px solid white', borderRadius: 999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', padding: 8,
-                WebkitTapHighlightColor: 'transparent', outline: 'none',
-              }}
-            >
-              <IconTransfer />
-            </motion.button>
-          </div>
-
-          {/* Receive at least */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div
-              key={`receive-${receive.code}`}
-              layout={!reduced}
-              initial={reduced ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={reduced ? undefined : { opacity: 0 }}
-              transition={FADE}
-            >
-              <ReceiveCard
-                currency={receive} amount={receiveAmt}
-                isDropdownOpen={openDropdown === 'receive'}
-                onSelectorClick={() => openFor('receive')}
-                selectorRef={recvBtnRef}
-              />
-            </motion.div>
-          </AnimatePresence>
-        </motion.div>
-      </div>
-
-      {/* ── CTA ─────────────────────────────────────────────── */}
-      <div style={{ borderTop: `1px solid ${T.strokeSoft}`, padding: 16, background: T.bgWhite, borderRadius: '0 0 20px 20px' }}>
-        <motion.button
-          onClick={handleProceed}
-          whileTap={{ scale: 0.97 }} transition={PRESS}
-          disabled={submitting}
-          aria-label="Proceed to swap"
-          style={{
-            width: '100%', height: 40, borderRadius: 24, border: 'none',
-            cursor: submitting ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            position: 'relative', overflow: 'hidden',
-            backgroundImage: [
-              'linear-gradient(180deg, rgba(255,255,255,0.153) 6.67%, rgba(255,255,255,0) 103.33%)',
-              `linear-gradient(90deg, ${T.bgStrong} 0%, ${T.bgStrong} 100%)`,
-            ].join(', '),
-            boxShadow: [
-              `0px 0px 0px 0.75px ${T.bgStrong}`,
-              '0px 16px 8px -8px rgba(51,51,51,0.01)',
-              '0px 12px 6px -6px rgba(51,51,51,0.02)',
-              '0px 5px 5px -2.5px rgba(51,51,51,0.08)',
-              '0px 1px 3px -1.5px rgba(51,51,51,0.16)',
-            ].join(', '),
-            WebkitTapHighlightColor: 'transparent', outline: 'none',
-            willChange: 'transform',
-          }}
-        >
-          <div style={{
-            position: 'absolute', inset: 0, borderRadius: 24, pointerEvents: 'none',
-            boxShadow: 'inset 0px 1px 2px 0px rgba(255,255,255,0.16)',
-          }} />
-          <AnimatePresence mode="wait" initial={false}>
-            {submitting ? (
-              <motion.span key="loading"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={FADE}
-                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-              >
-                <motion.span
-                  animate={reduced ? {} : { rotate: 360 }}
-                  transition={{ duration: 0.85, repeat: Infinity, ease: 'linear' }}
-                  style={{
-                    display: 'inline-block', width: 13, height: 13,
-                    border: '1.5px solid rgba(255,255,255,0.3)',
-                    borderTopColor: 'white', borderRadius: '50%',
-                  }}
-                />
-                <span style={{ ...inter, fontWeight: 500, fontSize: 14, lineHeight: '20px', letterSpacing: '-0.084px', color: 'white' }}>
-                  Processing…
-                </span>
-              </motion.span>
-            ) : (
-              <motion.span key="idle"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={FADE}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {view === 'swap' ? (
+          /* ══ SWAP VIEW ══════════════════════════════════════ */
+          <motion.div
+            key="swap"
+            style={{ display: 'flex', flexDirection: 'column' }}
+            exit={reduced ? { opacity: 0 } : {
+              opacity: 0, scale: 0.97,
+              transition: { duration: 0.14, ease: [0.4, 0, 1, 1] },
+            }}
+          >
+            {/* ── Header ──────────────────────────────────── */}
+            <div style={{
+              height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0 20px', borderBottom: `1px solid ${T.strokeSoft}`, opacity: 0.6,
+            }}>
+              <span style={{ ...inter, fontWeight: 500, fontSize: 16, lineHeight: '24px', letterSpacing: '-0.176px', color: T.textSub }}>
+                Currency exchange
+              </span>
+              <motion.button
+                whileTap={{ scale: 0.85 }} transition={PRESS} aria-label="Close"
                 style={{
-                  fontFamily: "'SF Pro Rounded', -apple-system, 'Inter', sans-serif",
-                  fontWeight: 500, fontSize: 14, lineHeight: '20px',
-                  letterSpacing: '-0.084px', color: 'white',
-                  WebkitFontSmoothing: 'antialiased',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: 4, borderRadius: 6, outline: 'none',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
               >
-                Proceed to swap
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.button>
-      </div>
+                <IconClose />
+              </motion.button>
+            </div>
 
-      {/* ── Currency dropdown overlay ────────────────────────── */}
-      <AnimatePresence
-        mode="wait"
-        custom={openDropdown}
-        onExitComplete={() => {}}
-      >
-        {openDropdown && (
-          <CurrencyDropdown
-            key={openDropdown}
-            currencies={openDropdown === 'sell' ? sellOptions : receiveOptions}
-            selected={openDropdown === 'sell' ? sell : receive}
-            onSelect={c => {
-              if (openDropdown === 'sell') setSell(c)
-              else setReceive(c)
-            }}
-            onClose={() => setOpenDropdown(null)}
-            anchorTop={dropdownAnchor.top}
-            anchorRight={dropdownAnchor.right}
-          />
+            {/* ── Swap card ───────────────────────────────── */}
+            {/* perspective on wrapper so rotateX reads as 3-D depth */}
+            <div style={{ padding: 16, perspective: 900, perspectiveOrigin: '50% 50%' }}>
+              <motion.div
+                animate={flipControls}
+                style={{
+                  position: 'relative',
+                  borderRadius: 32,
+                  background: T.bgWhite,
+                  boxShadow: [
+                    '0px 4px 8px -2px rgba(51,51,51,0.06)',
+                    '0px 2px 4px 0px rgba(51,51,51,0.04)',
+                    '0px 1px 2px 0px rgba(51,51,51,0.04)',
+                    '0px 0px 0px 1px #f5f5f5',
+                    'inset 0px -1px 1px -0.5px rgba(51,51,51,0.06)',
+                  ].join(', '),
+                  padding: 8,
+                  display: 'flex', flexDirection: 'column',
+                  transformOrigin: '50% 50%',
+                  backfaceVisibility: 'hidden',
+                  willChange: 'transform',
+                }}
+              >
+                {/* You sell */}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.div
+                    key={`sell-${sell.code}`}
+                    layout={!reduced}
+                    initial={reduced ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={reduced ? undefined : { opacity: 0 }}
+                    transition={FADE}
+                  >
+                    <SellCard
+                      currency={sell}
+                      inputStr={inputStr}
+                      onInputChange={handleInputChange}
+                      isCounting={isCounting}
+                      isDropdownOpen={openDropdown === 'sell'}
+                      onSelectorClick={() => openFor('sell')}
+                      selectorRef={sellBtnRef}
+                      onMax={handleMax}
+                    />
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Swap button — outer div owns centering so Framer Motion's
+                    rotate doesn't conflict with translateX(-50%)            */}
+                <div style={{
+                  position: 'absolute', top: 85, left: '50%',
+                  transform: 'translateX(-50%)', zIndex: 10,
+                }}>
+                  <motion.button
+                    onClick={handleSwap}
+                    whileTap={{ scale: 0.86 }}
+                    animate={reduced ? {} : { rotate: iconAngle }}
+                    transition={SWAP_SPRING}
+                    aria-label="Swap currencies"
+                    style={{
+                      width: 36, height: 36,
+                      background: T.bgWeak, border: '2px solid white', borderRadius: 999,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', padding: 8,
+                      WebkitTapHighlightColor: 'transparent', outline: 'none',
+                    }}
+                  >
+                    <IconTransfer />
+                  </motion.button>
+                </div>
+
+                {/* Receive at least */}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.div
+                    key={`receive-${receive.code}`}
+                    layout={!reduced}
+                    initial={reduced ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={reduced ? undefined : { opacity: 0 }}
+                    transition={FADE}
+                  >
+                    <ReceiveCard
+                      currency={receive} amount={receiveAmt}
+                      isDropdownOpen={openDropdown === 'receive'}
+                      onSelectorClick={() => openFor('receive')}
+                      selectorRef={recvBtnRef}
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </motion.div>
+            </div>
+
+            {/* ── CTA ─────────────────────────────────────── */}
+            <div style={{ borderTop: `1px solid ${T.strokeSoft}`, padding: 16, background: T.bgWhite, borderRadius: '0 0 20px 20px' }}>
+              <motion.button
+                onClick={handleProceed}
+                whileTap={{ scale: 0.97 }} transition={PRESS}
+                disabled={submitting}
+                aria-label="Proceed to swap"
+                style={{
+                  width: '100%', height: 40, borderRadius: 24, border: 'none',
+                  cursor: submitting ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  position: 'relative', overflow: 'hidden',
+                  backgroundImage: [
+                    'linear-gradient(180deg, rgba(255,255,255,0.153) 6.67%, rgba(255,255,255,0) 103.33%)',
+                    `linear-gradient(90deg, ${T.bgStrong} 0%, ${T.bgStrong} 100%)`,
+                  ].join(', '),
+                  boxShadow: [
+                    `0px 0px 0px 0.75px ${T.bgStrong}`,
+                    '0px 16px 8px -8px rgba(51,51,51,0.01)',
+                    '0px 12px 6px -6px rgba(51,51,51,0.02)',
+                    '0px 5px 5px -2.5px rgba(51,51,51,0.08)',
+                    '0px 1px 3px -1.5px rgba(51,51,51,0.16)',
+                  ].join(', '),
+                  WebkitTapHighlightColor: 'transparent', outline: 'none',
+                  willChange: 'transform',
+                }}
+              >
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 24, pointerEvents: 'none',
+                  boxShadow: 'inset 0px 1px 2px 0px rgba(255,255,255,0.16)',
+                }} />
+                <AnimatePresence mode="wait" initial={false}>
+                  {submitting ? (
+                    <motion.span key="loading"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={FADE}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                    >
+                      <motion.span
+                        animate={reduced ? {} : { rotate: 360 }}
+                        transition={{ duration: 0.85, repeat: Infinity, ease: 'linear' }}
+                        style={{
+                          display: 'inline-block', width: 13, height: 13,
+                          border: '1.5px solid rgba(255,255,255,0.3)',
+                          borderTopColor: 'white', borderRadius: '50%',
+                        }}
+                      />
+                      <span style={{ ...inter, fontWeight: 500, fontSize: 14, lineHeight: '20px', letterSpacing: '-0.084px', color: 'white' }}>
+                        Processing…
+                      </span>
+                    </motion.span>
+                  ) : (
+                    <motion.span key="idle"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={FADE}
+                      style={{
+                        fontFamily: "'SF Pro Rounded', -apple-system, 'Inter', sans-serif",
+                        fontWeight: 500, fontSize: 14, lineHeight: '20px',
+                        letterSpacing: '-0.084px', color: 'white',
+                        WebkitFontSmoothing: 'antialiased',
+                      }}
+                    >
+                      Proceed to swap
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            </div>
+
+            {/* ── Currency dropdown overlay ────────────────── */}
+            <AnimatePresence mode="wait" custom={openDropdown} onExitComplete={() => {}}>
+              {openDropdown && (
+                <CurrencyDropdown
+                  key={openDropdown}
+                  currencies={openDropdown === 'sell' ? sellOptions : receiveOptions}
+                  selected={openDropdown === 'sell' ? sell : receive}
+                  onSelect={c => {
+                    if (openDropdown === 'sell') setSell(c)
+                    else setReceive(c)
+                  }}
+                  onClose={() => setOpenDropdown(null)}
+                  anchorTop={dropdownAnchor.top}
+                  anchorRight={dropdownAnchor.right}
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+        ) : (
+          /* ══ SUMMARY VIEW ═══════════════════════════════════ */
+          <motion.div
+            key="summary"
+            style={{ display: 'flex', flexDirection: 'column' }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+          >
+            <TransactionSummary
+              sell={sell}
+              receive={receive}
+              sellAmt={sellAmt}
+              receiveAmt={receiveAmt}
+              onClose={handleBack}
+              onConfirm={handleConfirm}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
