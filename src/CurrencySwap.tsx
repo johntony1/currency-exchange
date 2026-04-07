@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useReducedMotion, useAnimation } from 'framer-
 import { Flag } from './flags'
 import CurrencyDropdown, { type Currency } from './CurrencyDropdown'
 import TransactionSummary from './TransactionSummary'
+import TransactionSuccess from './TransactionSuccess'
 
 /* ─────────────────────────────────────────────────────────────
  * SWAP CARD ANIMATION STORYBOARD
@@ -361,7 +362,7 @@ export default function CurrencySwap() {
   const [swapping,    setSwapping]   = useState(false)
   const [iconAngle,   setIconAngle]  = useState(0)
   const [submitting, setSubmitting] = useState(false)
-  const [view,       setView]       = useState<'swap' | 'summary'>('swap')
+  const [view,       setView]       = useState<'swap' | 'summary' | 'success'>('swap')
 
   const sellAmt    = parseFloat(inputStr) || 0
   const receiveAmt = +(sellAmt * RATES[sell.code][receive.code]).toFixed(3)
@@ -459,11 +460,13 @@ export default function CurrencySwap() {
   }
 
   function handleConfirm() {
-    // Slide-to-swap completed — reset and go back
-    setTimeout(() => {
-      setView('swap')
-      setInputStr('0')
-    }, 800)
+    // Slide-to-swap completed → show success screen
+    setTimeout(() => setView('success'), 400)
+  }
+
+  function handleBackToHome() {
+    setView('swap')
+    setInputStr('1200')   // restore default — '0' disables the Proceed button
   }
 
   /* Currencies available for the other slot (prevent same-same) */
@@ -701,7 +704,7 @@ export default function CurrencySwap() {
             </AnimatePresence>
           </motion.div>
 
-        ) : (
+        ) : view === 'summary' ? (
           /* ══ SUMMARY VIEW ═══════════════════════════════════ */
           <motion.div
             key="summary"
@@ -715,6 +718,25 @@ export default function CurrencySwap() {
               receiveAmt={receiveAmt}
               onClose={handleBack}
               onConfirm={handleConfirm}
+            />
+          </motion.div>
+
+        ) : (
+          /* ══ SUCCESS VIEW ════════════════════════════════════ */
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            transition={{ type: 'spring', visualDuration: 0.38, bounce: 0.1 }}
+            style={{ display: 'flex', flexDirection: 'column' }}
+          >
+            <TransactionSuccess
+              sell={sell}
+              receive={receive}
+              sellAmt={sellAmt}
+              receiveAmt={receiveAmt}
+              onBack={handleBackToHome}
             />
           </motion.div>
         )}
