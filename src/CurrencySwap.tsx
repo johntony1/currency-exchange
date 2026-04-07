@@ -356,7 +356,8 @@ export default function CurrencySwap() {
 
   const [openDropdown,   setOpenDropdown]   = useState<'sell' | 'receive' | null>(null)
   const [dropdownAnchor, setDropdownAnchor] = useState({ top: 0, right: 0 })
-  const [swapping,   setSwapping]   = useState(false)
+  const [swapping,    setSwapping]   = useState(false)
+  const [iconAngle,   setIconAngle]  = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
   const sellAmt    = parseFloat(inputStr) || 0
@@ -410,6 +411,8 @@ export default function CurrencySwap() {
     setSwapping(true)
 
     const next = receiveAmt % 1 === 0 ? String(Math.round(receiveAmt)) : String(receiveAmt)
+
+    setIconAngle(a => a + 180)
 
     if (reduced) {
       // No animation — swap immediately
@@ -542,7 +545,7 @@ export default function CurrencySwap() {
             <motion.button
               onClick={handleSwap}
               whileTap={{ scale: 0.86 }}
-              animate={reduced ? {} : { rotate: swapping ? 180 : 0 }}
+              animate={reduced ? {} : { rotate: iconAngle }}
               transition={SWAP_SPRING}
               aria-label="Swap currencies"
               style={{
