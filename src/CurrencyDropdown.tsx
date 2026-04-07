@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Flag } from './flags'
 
 /* ─────────────────────────────────────────────────────────────
